@@ -15,9 +15,9 @@ function App() {
   const handleDetection = async () => {
     const faceMatcher = new faceapi.FaceMatcher(face_with_label, 0.7);
     
-    const detection = await faceapi.detectAllFaces(imgRef.current).withFaceLandmarks().withFaceDescriptors();
+    const detection = await faceapi.detectSingleFace(imgRef.current).withFaceLandmarks().withFaceDescriptor();
 
-    console.log(detection[0].descriptor);
+    console.log(detection.descriptor);
 
     canvasRef.current.innerHtml = faceapi.createCanvasFromMedia(imgRef.current);
 
@@ -33,48 +33,96 @@ function App() {
 
     // faceapi.draw.drawDetections(canvasRef.current, resized);
     faceapi.draw.drawFaceLandmarks(canvasRef.current, resized);
-    resized.forEach( detection => {
+    // resized.forEach( detection => {
       const box = detection.detection.box
       const drawBox = new faceapi.draw.DrawBox(box, { label: faceMatcher.findBestMatch(detection.descriptor)})
       drawBox.draw(canvasRef.current)
-    })
+    // })
   }
   
-  const handleTraning = async () => {
-    const labels = ['Captain', 'Thor', 'Tony Stark'];
+  // const handleTraining = async () => {
+  //   const labels = ['Captain', 'Thor', 'Tony Stark'];
 
-    var faceDescriptor = [];
+  //   var faceDescriptor = [];
 
-    for (const label of labels) {
-      var descriptors = [];
+  //   for (const label of labels) {
+  //     var descriptions = [];
 
-      for(let i = 1; i <= 3; i++) {
-        const image = await faceapi.fetchImage(`/training-data/${label}/${i}.jpg`);
+  //     for(let i = 1; i <= 3; i++) {
+  //       const image = await faceapi.fetchImage(`/training-data/${label}/${i}.jpg`);
         
-        const detection = await faceapi.detectSingleFace(image)
-                                                        .withFaceLandmarks()
-                                                        .withFaceDescriptor();
+  //       const detection = await faceapi.detectSingleFace(image, new faceapi.SsdMobilenetv1Options()).withFaceLandmarks().withFaceDescriptor();
 
-        descriptors.push(detection.descriptor);
-      }
-      console.log('Train xong '+ label);
+  //       descriptions.push(detection.descriptor);
+  //     }
+  //     console.log('Train xong '+ label);
 
-      faceDescriptor.push(new faceapi.LabeledFaceDescriptors(label, descriptors));
-    }
+  //     faceDescriptor.push(new faceapi.LabeledFaceDescriptors(label, descriptions));
+  //   }
 
-    return faceDescriptor;
-  }
+  //   return faceDescriptor;
+  // }
+
+  // const handleTraining = async () => {
+  //   const labels = ['Captain', 'Thor', 'Tony Stark'];
+
+  //   return Promise.all(
+  //     labels.map(async label => {
+  //       var descriptions = [];
+
+  //       for (let i = 1; i <= 3; i++) {
+  //         const img = await faceapi.fetchImage(`/training/${label}/${i}.jpg`);
+  //         const detection = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
+  //         // const detection = await faceapi.computeFaceDescriptor(img);
+
+  //         console.log(detection.descriptor);
+          
+  //         descriptions.push(detection.descriptor);
+  //       }
+  //       console.log('Train xong ' + label);
+
+  //       const lfd = await faceapi.LabeledFaceDescriptors(label, descriptions);
+
+  //       return new Float32Array(lfd);
+  //     })
+  //   );
+  // }
 
   useEffect(() => {
+    const handleTraining = async () => {
+      const labels = ['Captain', 'Thor', 'Tony Stark'];
+
+      var faceDescriptor = [];
+
+      for (const label of labels) {
+        var descriptions = [];
+
+        for(let i = 1; i <= 3; i++) {
+          const image = await faceapi.fetchImage(`/training/${label}/${i}.jpg`);
+          
+          const detection = await faceapi.detectSingleFace(image).withFaceLandmarks().withFaceDescriptor();
+
+          descriptions.push(detection.descriptor);
+        }
+        console.log('Train xong '+ label);
+
+        faceDescriptor.push(new faceapi.LabeledFaceDescriptors(label, descriptions));
+      }
+
+      setFWL(faceDescriptor);
+    }
+
     const loadModels = () => {
       Promise.all([
-        faceapi.nets.ssdMobilenetv1.loadFromUri("/models"),
-        faceapi.nets.faceLandmark68Net.loadFromUri("/models"),
         faceapi.nets.faceRecognitionNet.loadFromUri("/models"),
+        faceapi.nets.faceLandmark68Net.loadFromUri("/models"),
+        faceapi.nets.ssdMobilenetv1.loadFromUri("/models"),
       ])
       .then(async () => {
-        const training_data = await handleTraning();
-        setFWL(training_data);
+        // const training_data = await handleTraining();
+        // setFWL(training_data);
+
+        await handleTraining();
       })
     };
 
@@ -86,7 +134,7 @@ function App() {
   return (
     <div className='wrapper'>
 
-      <input type='file'  onChange={e => {
+      <input type='file' onChange={e => {
           setImg(e.target.files[0]);
 
           var ctx = canvasRef.current.getContext('2d');
